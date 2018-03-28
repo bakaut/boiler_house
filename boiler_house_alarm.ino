@@ -38,6 +38,7 @@ void setup() {
     pinMode(swichBtn4, INPUT);
     TEMP_HIGH= EEPROM.read(10);
     TEMP_LOW= EEPROM.read(11);
+    digitalWrite(swichBtn1, HIGH);
 
 }
 
@@ -62,7 +63,7 @@ void loop() {
     ToOledPrint("OK", "print",50 ,0);  
     }
     
-    int btn1Time = btnTimePressed2 (swichBtn1);
+    int btn1Time = btnTimePressed3 (swichBtn1);
     ToOledPrint(String(btn1Time), "print", 50,10);
    
    if(Btn1Status == "1" &&  Btn2Status == "1"){
@@ -149,10 +150,10 @@ int btnTimePressed (int btn) {
 
   }
   if ((buttonActive == true) && (millis() - buttonTimer > buttonTime) ) { 
-    return (millis() - buttonTimer);    
+    return 1;    
   }
   else {
-    return (millis() - buttonTimer);
+    return 0;
   }
 }
 
@@ -206,3 +207,57 @@ int btnTimePressed2 (int btn) {
   //for next time through the loop
   lastButtonState = buttonState;
 }
+
+int btnTimePressed3(int inPin) {
+  int current;         // Current state of the button (LOW is pressed b/c i'm using the pullup resistors)
+  long millis_held;    // How long the button was held (milliseconds)
+  long secs_held;      // How long the button was held (seconds)
+  long prev_secs_held; // How long the button was held in the previous check
+  byte previous = HIGH;
+  unsigned long firstTime; // how long since the button was first pressed 
+  current = digitalRead(inPin);
+
+  // if the button state changes to pressed, remember the start time 
+  if (current == LOW && previous == HIGH && (millis() - firstTime) > 200) {
+    firstTime = millis();
+  }
+
+  millis_held = (millis() - firstTime);
+  secs_held = millis_held / 1000;
+
+  // This if statement is a basic debouncing tool, the button must be pushed for at least
+  // 100 milliseconds in a row for it to be considered as a push.
+  if (millis_held > 50) {
+
+    if (current == LOW && secs_held > prev_secs_held) {
+      return 10;
+    }
+
+    // check if the button was released since we last checked
+    if (current == HIGH && previous == LOW) {
+      // HERE YOU WOULD ADD VARIOUS ACTIONS AND TIMES FOR YOUR OWN CODE
+      // ===============================================================================
+
+      // Button pressed for less than 1 second, one long LED blink
+      if (secs_held <= 0) {
+        return 1;
+      }
+
+      // If the button was held for 3-6 seconds blink LED 10 times
+      if (secs_held >= 1 && secs_held < 3) {
+        return 2;
+      }
+
+      // Button held for 1-3 seconds, print out some info
+      if (secs_held >= 3) {
+     return 3;
+      }
+      // ===============================================================================
+    }
+  }
+
+  previous = current;
+  prev_secs_held = secs_held;
+}
+
+
