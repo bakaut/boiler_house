@@ -24,6 +24,8 @@ int gndPin = 2;
 
 int SendSmsCount = 0;
 
+unsigned long startTime = 0, endTime = 0;
+
 Adafruit_SSD1306 display(4);
 MAX6675 thermocouple(thermoCLK, thermoCS, thermoDO);
 
@@ -39,6 +41,7 @@ void setup() {
     pinMode(swichBtn4, INPUT);
     TEMP_HIGH= EEPROM.read(10);
     TEMP_LOW= EEPROM.read(11);
+
 
 
 }
@@ -61,22 +64,49 @@ void loop() {
    
    if ( temperature > TEMP_HIGH){
      if (SendSmsCount < 3) {
+
        ToOledPrint("Alarm", "print",50 ,0);
        //Send sms and wait for second check
-      //Send sms code
-      //Wait for 1.3 hour
-      //delay(5000000);
-      delay(6000); //for test set 6 second
+       //Send sms code
+       ToOledPrint("SMS SEND", "print",80 ,20);
+       //Wait for 1.3 hour
+       //delay(5000000);
+       //wait for second send sms. while waite dispay temperature
+       startTime = millis();
+
+       while ((millis() - startTime)  < 15000) {
+         temperature = thermocouple.readCelsius();
+         ToOledPrint(String(temperature), "print", 0,0);
+
+       }
+      
       SendSmsCount++;
      }
      else {
-       ToOledPrint("SMS OFF", "print",50 ,0);
-       SendSmsCount=10;
+       ToOledPrint("SMS OFF", "print",80 ,0);
+       //Wait for an hour. for test 15 seconds
+       startTime = millis();
+       while ((millis() - startTime) < 15000) {
+         temperature = thermocouple.readCelsius();
+         ToOledPrint(String(temperature), "print", 0,0);
+         if ( temperature < TEMP_HIGH) {
+           return;
+         }
+
+       }
+      SendSmsCount = 0;
+      ToOledPrint("SMS ON", "print",80 ,0);
+      delay(2000);
      }
   
     }
    else {
-    ToOledPrint("OK", "print",50 ,0);  
+    ToOledPrint("OK", "print",50 ,0);
+    if (endTime - millis() < 10000) {
+      ToOledPrint("SMS ON", "print",80 ,0);
+      delay(2000);
+      SendSmsCount=0;
+}  
     }
     
    
@@ -160,8 +190,3 @@ void ToOledPrint(String text, String mode, int x, int y) {
   }
   
 }
-
-
-
-
-
