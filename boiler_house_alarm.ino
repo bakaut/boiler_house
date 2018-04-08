@@ -12,32 +12,33 @@
 #define A6baud 115200
 #define SERIALTIMEOUT 3000
 
-int swichBtn1=9;
-int swichBtn2=8;
-int swichBtn3=7;
-int swichBtn4=2;
-String Btn1Status, Btn2Status,Btn3Status,Btn4Status;
+int swichBtn1=12;
+int swichBtn2=11;
+int swichBtn3=10;
+int swichBtn4=9;
+String Btn1Status, Btn2Status,Btn3Status,Btn4Status,phoneNum;
 int TEMP_HIGH=0;  
 int TEMP_LOW=0;
 int temperature;
 
 
-int thermoDO = 4;
+int thermoSO = 4;
 int thermoCS = 5;
-int thermoCLK = 6;
-
-
-int vccPin = 3;
-int gndPin = 2;
+int thermoSCK = 6;
 
 int SendSmsCount = 0;
 
 unsigned long startTime = 0, endTime = 0;
 
-String phone_no="89219614704";
+//String phone_no="89219614704";
+
+unsigned int count;
+
+int phone [10] = { 9, 5, 2, 2, 8, 7, 2, 5, 7, 1 };
+int phone_default [10] = { 9, 5, 2, 2, 8, 7, 2, 5, 7, 1 };
 
 Adafruit_SSD1306 display(4);
-MAX6675 thermocouple(thermoCLK, thermoCS, thermoDO);
+MAX6675 thermocouple(thermoSCK, thermoCS, thermoSO);
 
 void setup() {
 
@@ -51,12 +52,14 @@ void setup() {
     pinMode(swichBtn4, INPUT);
     TEMP_HIGH= EEPROM.read(10);
     TEMP_LOW= EEPROM.read(11);
+    EEPROM.get(15,phone);
+    phoneNum="8"+phone_string(phone);
 
     //Power on module via power pin/
-    pinMode(3, OUTPUT);
-    digitalWrite(3,HIGH);
+    pinMode(2, OUTPUT);
+    digitalWrite(2,HIGH);
     delay(2500);
-    digitalWrite(3,LOW);
+    digitalWrite(2,LOW);
 
     //Start uart, start gsm module, wait for network register
     A6board.begin(A6baud);
@@ -79,9 +82,10 @@ void loop() {
    ToOledPrint(String(temperature), "print", 0,0);
    ToOledPrint("UP " + String(TEMP_HIGH), "print", 0,10);
    ToOledPrint("LOW " + String(TEMP_LOW), "print", 0,20);
-   ToOledPrint(Btn1Status + Btn2Status  + Btn3Status +Btn4Status , "print", 50,20);
+   //ToOledPrint(Btn1Status + Btn2Status  + Btn3Status +Btn4Status , "print", 50,20);
    
    if ( temperature > TEMP_HIGH){
+      delay(2000);
      if (SendSmsCount < 3) {
 
 
@@ -91,7 +95,7 @@ void loop() {
        ToOledPrint("SMS SEND", "print",80 ,20);
         //Send sms
        A6command("AT+CMGF=1", "OK", "yy", 10000, 2);
-       A6command("AT+CMGS=\""+phone_no+"\"", ">", "yy", 10000, 1);
+       A6command("AT+CMGS=\""+phoneNum+"\"", ">", "yy", 10000, 1);
        delay(300);
        A6board.print(String( temperature));
        delay(300);
@@ -136,7 +140,7 @@ void loop() {
 }  
     }
     
-   
+
    if(Btn1Status == "1" &&  Btn2Status == "1"){
      byte status;
      status = true;
@@ -152,6 +156,17 @@ void loop() {
         display.clearDisplay();
         ToOledPrint("TMP UP " + String(TEMP_HIGH), "print",0 ,0);
         ToOledPrint("TMP LOW "+ String(TEMP_LOW), "print",0 ,10);
+        if(Btn2Status == "1" &&  Btn3Status == "1"){
+           EEPROM.write(10, 30);
+           EEPROM.write(11, 20);
+           TEMP_HIGH=30;
+           TEMP_LOW=20;
+           display.clearDisplay();
+           ToOledPrint("TMP UP " + String(TEMP_HIGH), "print",0 ,0);
+           ToOledPrint("TMP LOW "+ String(TEMP_LOW), "print",0 ,10);
+           delay(1000);
+        }
+        
         
         if(Btn3Status == "1"){        
 
@@ -187,7 +202,72 @@ void loop() {
       
        
    }
-   
+   //Set phone number
+   if(Btn2Status == "1" &&  Btn3Status == "1"){
+     byte status;
+     status = true;
+     
+      while (status)
+      {
+        delay(1000);
+        Btn1Status = digitalRead(swichBtn1);
+        Btn2Status = digitalRead(swichBtn2);
+        Btn3Status = digitalRead(swichBtn3);
+        Btn4Status = digitalRead(swichBtn4);
+        display.clearDisplay();
+        //EEPROM.get(15,phone_test);
+        phoneNum="8"+phone_string(phone);
+        ToOledPrint("Set telephone number:", "print",0 ,0);
+        //print telephone
+        //print_number(phone,count,0,10);
+        ToOledPrint(phone_string(phone), "print",0 ,10);
+        //print strelka
+ 
+        ToOledPrint("^", "print",count*5 ,20);
+        //ToOledPrint(phone_string(phone_test), "print",count ,30);
+        if(Btn1Status == "1"){
+            //move next position
+            count++;
+            if (count >9) {
+              count=0;
+            }
+            delay(100);
+          }
+        if(Btn2Status == "1"){
+            //Increase digit
+            phone[count]++;
+            if (phone[count] > 9) {
+              phone[count]=0;
+            }
+            delay(100);
+          }
+        if(Btn3Status == "1"){
+            //Decrease digit
+            phone[count]--;
+            if (phone[count] < 0) {
+              phone[count]=9;
+            }
+            delay(100);
+          }
+        if(Btn4Status == "1"){
+          //Set default number
+          EEPROM.put(15, phone_default);
+          display.clearDisplay();
+          ToOledPrint("Reset to :"+phone_string(phone_default), "print",0 ,10);
+          delay(2000);
+          count=0;
+          }
+        if(Btn2Status == "1" &&  Btn3Status == "1"){
+          status = false;
+          display.clearDisplay();
+          ToOledPrint("Telephone set to:", "print",0 ,0);
+          ToOledPrint(phoneNum, "print",0 ,10);
+          EEPROM.put(15, phone);
+          count=0;
+          delay(2000);
+        }
+      }
+   }
    
 
 }
@@ -206,14 +286,7 @@ void ToOledPrint(String text, String mode, int x, int y) {
     
     display.setTextColor(BLACK);
     display.println(text);
-    delay(300);
-    display.display();
-    display.setTextColor(WHITE);
-    display.println(text);
-    display.display();
-    delay(100);
-    
-
+    display.display();  
   }
   
 }
@@ -281,3 +354,15 @@ String A6read() {
   }
   return reply;
 } 
+
+String phone_string(int phone[10]) {
+  String phoneStr;
+  phoneStr=String(phone[0])+String(phone[1])+String(phone[2])+String(phone[3])+String(phone[4])+String(phone[5])+String(phone[6])+String(phone[7])+String(phone[8])+String(phone[9]);
+  return phoneStr;
+} 
+/*
+void print_number(int phone[10], int count, int x,int y){
+ToOledPrint(phone_string(phone), "print",x ,y);
+ToOledPrint(String(phone[count]), "black",x ,y);
+}
+*/
